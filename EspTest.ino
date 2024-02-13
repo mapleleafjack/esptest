@@ -7,11 +7,7 @@
 #include "Globals.h"
 #include "WiFiConnection.h"
 #include "WeatherService.h"
-
-// NTP Servers:
-const char *ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 0;         // Adjust according to your timezone in seconds
-const int daylightOffset_sec = 3600;  // Adjust if your country uses daylight saving time
+#include "TimeProvider.h" // Include the TimeProvider header
 
 // Pin definitions for the ESP32-CAM and ST7735
 #define TFT_CS 13    // Chip select pin for TFT
@@ -27,9 +23,6 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RS
 
 // Global variable to track button press
 volatile bool buttonPressed = false;
-
-const char *fixedDate = "2024-02-01";
-const char *fixedTime = "12:34";
 
 // Web server on port 80
 WebServer server(80);
@@ -49,6 +42,8 @@ enum DisplayMode {
 
 // Variable to track the current display mode
 DisplayMode currentDisplayMode = DISPLAY_CIRCLE;
+
+TimeProvider timeProvider;
 
 // '1530369_weather_cloud_clouds_cloudy_icon', 64x64px
 const unsigned char heartBitmap [] PROGMEM = {
@@ -94,6 +89,7 @@ void IRAM_ATTR handleButtonPress() {
 
 void setup() {
   Serial.begin(115200);
+
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
   // Attach the interrupt to the button pin
@@ -106,8 +102,8 @@ void setup() {
 
   connectToWiFi();  // Connect to WiFi
 
-  // Configure NTP
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  // Initialize TimeProvider with NTP settings
+  timeProvider.begin("pool.ntp.org", 0, 3600);
 
   configureServer();  // Configure the server
 
@@ -134,21 +130,6 @@ void configureServer() {
     server.send(404, "text/plain", "Not found");
   });
 }
-
-void displayDateTimeLCDStyle(const char *date, const char *time) {
-  tft.setTextColor(ST7735_WHITE);
-  tft.setTextSize(1);  // Set text size to larger scale for better visibility
-
-  // Display date
-  tft.setCursor(0, 0);
-  tft.println(date);
-
-  // Display time
-  tft.setCursor(0, 1);
-  tft.println(time);
-}
-
-
 
 static float lastTemperature = -999.0;  // Impossible initial value to ensure update occurs
 static String lastWeatherCondition = "";
@@ -219,47 +200,20 @@ void logToTFT(String message) {
 }
 
 void updateDateTimeFromNTP() {
-  static struct tm prevTimeinfo;  // Stores the previous time to compare changes
-  struct tm timeinfo;
+    // This function might now simply call methods from TimeProvider
+    // to update the display if the time or date has changed.
+    String formattedTime = timeProvider.getFormattedTime();
+    String formattedDate = timeProvider.getFormattedDate();
 
-  if (!getLocalTime(&timeinfo)) {
-    Serial.println("Failed to obtain time");
-    return;
-  }
+    // Update the display with the time and date
+    // For example:
+    tft.setCursor(0, 0);
+    tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
+    tft.println(formattedTime);
 
-  // Check what has changed
-  bool updateHour = prevTimeinfo.tm_hour != timeinfo.tm_hour;
-  bool updateMinute = prevTimeinfo.tm_min != timeinfo.tm_min;
-  bool updateSecond = prevTimeinfo.tm_sec != timeinfo.tm_sec;
-  bool updateDay = prevTimeinfo.tm_mday != timeinfo.tm_mday;
-
-  // Only update the screen if there are changes
-  if (updateHour || updateMinute || updateSecond || updateDay) {
-    char timeStr[16];
-    char dateStr[16];
-
-    // Assuming you only want to update the time every second
-    if (updateSecond) {
-      strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeinfo);
-      // Set cursor position for time
-      tft.setCursor(0, 0); // Adjust as necessary for your display layout
-      tft.setTextColor(ST7735_WHITE, ST7735_BLACK);  // Set text color and background to avoid erasing
-      tft.println(timeStr);
-    }
-
-    // Assuming the condition should be `updateDay` instead of `updateSecond` for updating the date
-    if (updateSecond) {
-      strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", &timeinfo);
-      // Set cursor position for date, adjust y-coordinate as necessary
-      tft.setCursor(0, 20); // This is just an example, adjust the Y coordinate according to your display and font size
-      tft.setTextColor(ST7735_WHITE, ST7735_BLACK);  // Set text color and background to avoid erasing
-      tft.println(dateStr);
-    }
-
-    prevTimeinfo = timeinfo;
-  }
+    tft.setCursor(0, 20);
+    tft.println(formattedDate);
 }
-
 
 void loop() {
   unsigned long frameStartTime = millis();
