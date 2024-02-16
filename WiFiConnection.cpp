@@ -1,7 +1,5 @@
 // WiFiConnection.cpp
 #include "WiFiConnection.h" // Include the corresponding header file
-#include <Adafruit_GFX.h>
-#include <Adafruit_ST7735.h>
 
 // Optionally, if ssid and password are used only within this implementation, define them here
 const char *ssid = "Hide your WIFI";         // Replace with your WiFi SSID

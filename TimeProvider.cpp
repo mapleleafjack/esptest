@@ -41,3 +41,27 @@ String TimeProvider::getFormattedDate() {
     }
     return "";
 }
+
+int TimeProvider::getCurrentHour() {
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) {
+        return timeinfo.tm_hour;
+    }
+    return -1; // Return an invalid value if time could not be obtained
+}
+
+int TimeProvider::getCurrentMinute() {
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) {
+        return timeinfo.tm_min;
+    }
+    return -1;
+}
+
+int TimeProvider::getCurrentSecond() {
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) {
+        return timeinfo.tm_sec;
+    }
+    return -1;
+}

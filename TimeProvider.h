@@ -10,6 +10,9 @@ public:
     bool updateTime();
     String getFormattedTime();
     String getFormattedDate();
+    int getCurrentHour();
+    int getCurrentMinute();
+    int getCurrentSecond();
 private:
     bool timeUpdated;
 };
