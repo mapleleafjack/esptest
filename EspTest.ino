@@ -3,6 +3,7 @@
 #include <time.h>
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include <Bounce2.h>
 
 #include "Globals.h"
 #include "WiFiConnection.h"
@@ -15,9 +16,10 @@
 
 #define BUTTON_PIN 0
 
+Bounce debouncer = Bounce();
+
 TFT_eSPI tft = TFT_eSPI();                         // Create display object
-// Global variable to track button press
-volatile bool buttonPressed = false;
+
 volatile bool redraw_clock = true;
 volatile bool resetWeatherWidget = false;
 
@@ -42,24 +44,20 @@ DisplayMode currentDisplayMode = DISPLAY_DATETIME;
 TimeProvider timeProvider;
 WeatherProvider weatherProvider("c32e13c5b20783f46b02e0f218fc39e9", 51.5074, -0.1278);
 
-// ISR for handling button press
-void IRAM_ATTR handleButtonPress() {
-  buttonPressed = true;
-}
-
 void setup() {
   Serial.begin(115200);
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-
-  // Attach the interrupt to the button pin
-  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), handleButtonPress, FALLING);
 
   tft.init();
   tft.setRotation(3);
   tft.fillScreen(ST7735_BLACK);
 
   logToTFT("Loading >.<");
+
+   // Initialize Bounce2 for the button
+  debouncer.attach(BUTTON_PIN);
+  debouncer.interval(50); // Set debounce interval to 50ms for reliability
 
   connectToWiFi();  // Connect to WiFi
 
@@ -106,6 +104,9 @@ void loop() {
     connectToWiFi();  // Attempt to reconnect if disconnected
   }
 
+  // Update the debouncer
+  debouncer.update();
+
   switch (currentDisplayMode) {
     case DISPLAY_DATETIME:
       updateAnalogClock(timeProvider, tft, redraw_clock);
@@ -117,12 +118,10 @@ void loop() {
       break;
   }
 
-  if (buttonPressed) {
+  if (debouncer.fell()) {
     Serial.println("Button pressed!");
     tft.fillScreen(ST7735_BLACK);  // Clear the screen
-
-    buttonPressed = false;
-
+    
     if (currentDisplayMode == DISPLAY_WEATHER_INFO) {
       currentDisplayMode = DISPLAY_DATETIME;
       redraw_clock = true;
