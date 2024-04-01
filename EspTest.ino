@@ -2,8 +2,9 @@
 #include <WebServer.h>
 #include <time.h>
 #include <Arduino.h>
-#include <TFT_eSPI.h>
 #include <Bounce2.h>
+
+
 
 #include "Globals.h"
 #include "WiFiConnection.h"
@@ -14,11 +15,13 @@
 #include "Animation.h"
 #include "WeatherWidget.h"
 
+#include <TFT_eSPI.h>
+
 #define BUTTON_PIN 0
 
 Bounce debouncer = Bounce();
 
-TFT_eSPI tft = TFT_eSPI();                         // Create display object
+TFT_eSPI tft = TFT_eSPI();  // Create display object
 
 volatile bool redraw_clock = true;
 volatile bool resetWeatherWidget = false;
@@ -30,6 +33,9 @@ WebServer server(80);
 const int targetFPS = 30;
 // Calculate the time for each frame in milliseconds
 const long frameTime = 1000 / targetFPS;
+
+
+long lastEncoderPosition = -999;
 
 static unsigned long lastUpdateTime = 0;
 
@@ -55,9 +61,9 @@ void setup() {
 
   logToTFT("Loading >.<");
 
-   // Initialize Bounce2 for the button
+  // Initialize Bounce2 for the button
   debouncer.attach(BUTTON_PIN);
-  debouncer.interval(50); // Set debounce interval to 50ms for reliability
+  debouncer.interval(50);  // Set debounce interval to 50ms for reliability
 
   connectToWiFi();  // Connect to WiFi
 
@@ -68,6 +74,7 @@ void setup() {
 
   tft.fillScreen(ST7735_BLACK);  // Clear the screen
 }
+
 
 void configureServer() {
   // Start the server
@@ -121,7 +128,7 @@ void loop() {
   if (debouncer.fell()) {
     Serial.println("Button pressed!");
     tft.fillScreen(ST7735_BLACK);  // Clear the screen
-    
+
     if (currentDisplayMode == DISPLAY_WEATHER_INFO) {
       currentDisplayMode = DISPLAY_DATETIME;
       redraw_clock = true;
